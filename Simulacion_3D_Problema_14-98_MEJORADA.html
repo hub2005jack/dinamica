@@ -1,0 +1,79 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Dinámica 14-98 | Laboratorio 3D</title><style>
+:root{color-scheme:dark;font-family:Inter,Segoe UI,Arial,sans-serif}*{box-sizing:border-box}body{margin:0;background:#09111e;color:#eaf2ff}header{padding:18px 24px;border-bottom:1px solid #27394f;background:#101d2e}h1{font-size:22px;margin:0 0 6px}header p{margin:0;color:#a7bfd8;font-size:13px}.layout{display:grid;grid-template-columns:minmax(0,1fr) 325px;min-height:calc(100vh - 88px)}.scene{position:relative;min-height:540px;background:radial-gradient(ellipse at 45% 20%,#20374e,#0b1421 70%)}canvas{width:100%;height:100%;display:block;touch-action:none}.badge{position:absolute;top:17px;left:20px;background:#0c1828db;border:1px solid #49617a;border-radius:9px;padding:9px 12px;font-size:12px}.hint{position:absolute;bottom:14px;left:20px;font-size:12px;color:#a5b8cd;background:#0b1527b8;padding:7px 10px;border-radius:8px}.panel{padding:22px;background:#111e30;border-left:1px solid #2c4058;overflow:auto}h2{font-size:15px;color:#91c7ff;margin:22px 0 12px}h2:first-child{margin-top:0}.buttons{display:grid;grid-template-columns:1fr 1fr;gap:9px}button{background:#203751;border:1px solid #456587;color:white;padding:11px 7px;border-radius:9px;font-weight:600;cursor:pointer}button:hover{background:#2b4f72}button.primary{background:#087cc2;border-color:#32b6ff}button.wide{grid-column:1/-1}label{font-size:13px;color:#b6cce2;display:block;margin-top:16px}input[type=range]{width:100%;accent-color:#29b8ff;margin-top:9px}.read{display:grid;grid-template-columns:1fr 1fr;gap:10px}.metric{padding:12px;background:#192c43;border:1px solid #2a4864;border-radius:10px}.metric small{display:block;color:#9db8d0;font-size:11px;margin-bottom:7px}.metric strong{font-size:21px;color:#fff}.status{padding:11px 13px;background:#17334a;border-radius:9px;border-left:3px solid #42c8ff;font-size:13px;margin:12px 0;line-height:1.5}.bar{height:9px;background:#263b52;border-radius:6px;overflow:hidden;margin:7px 0 12px}.fill{height:100%;background:#4ec1ff;width:0}.energyline{font-size:12px;display:flex;justify-content:space-between;color:#bfd2e4}footer{font-size:12px;color:#9fb4cb;line-height:1.55;margin-top:18px;border-top:1px solid #31465d;padding-top:12px}@media(max-width:900px){.layout{grid-template-columns:1fr}.scene{min-height:420px;height:58vh}.panel{border-left:0}} </style></head><body>
+<header><h1>PROBLEMA 14-98 · Bloque y resorte en plano inclinado</h1><p>Modelo tridimensional interactivo · 10 kg · 30° · 10 m hasta contacto · k = 5000 N/m · sin fricción</p></header>
+<div class="layout"><div class="scene"><canvas id="view"></canvas><div class="badge">MODELO FÍSICO 3D · Gira arrastrando · Zoom con rueda</div><div class="hint">El bloque permanece apoyado en la rampa y comprime el resorte. El movimiento se detiene en la compresión máxima.</div></div><aside class="panel">
+<h2>Controles de simulación</h2><div class="buttons"><button id="play" class="primary">▶ Iniciar</button><button id="pause">Ⅱ Pausar</button><button id="reset">↺ Reiniciar</button><button id="contact">Contacto</button><button id="max" class="wide">⏭ Compresión máxima (453 mm)</button></div>
+<label>Recorrido del bloque <span id="slideLabel">0.000 m</span></label><input id="slide" type="range" min="0" max="10.45294" step=".001" value="0">
+<label>Velocidad de reproducción <span id="rateLabel">1.0×</span></label><input id="rate" type="range" min=".25" max="2.5" step=".25" value="1">
+<label><input type="checkbox" id="vectors" checked> Mostrar fuerzas (DCL sobre bloque)</label><label><input type="checkbox" id="grid" checked> Mostrar cuadrícula y cotas</label>
+<h2>Estado instantáneo</h2><div id="status" class="status">Posición inicial: bloque en reposo, antes de descender.</div><div class="read"><div class="metric"><small>Recorrido</small><strong id="s">0.00 m</strong></div><div class="metric"><small>Velocidad</small><strong id="v">0.00 m/s</strong></div><div class="metric"><small>Compresión</small><strong id="x">0 mm</strong></div><div class="metric"><small>Tiempo</small><strong id="t">0.00 s</strong></div><div class="metric"><small>Fuerza del resorte</small><strong id="f">0 N</strong></div><div class="metric"><small>Normal</small><strong>84.96 N</strong></div></div>
+<h2>Transformación de energía</h2><div class="energyline"><span>Energía cinética</span><span id="keText">0 J</span></div><div class="bar"><div class="fill" id="ke"></div></div><div class="energyline"><span>Energía del resorte</span><span id="peText">0 J</span></div><div class="bar"><div class="fill" id="pe" style="background:#ffa75b"></div></div>
+<footer><b>Resultado:</b> 2500x² − 49.05x − 490.5 = 0 → x = 0.4529 m. Se representa solo el descenso hasta la primera detención momentánea. Modelo ideal sin rozamiento; la geometría del bloque es ilustrativa.</footer>
+</aside></div>
+<script>
+'use strict';
+const canvas=document.getElementById('view'),ctx=canvas.getContext('2d');
+const $=id=>document.getElementById(id);
+const g=9.81,m=10,k=5000,theta=Math.PI/6,slope=Math.sin(theta),co=Math.cos(theta);
+const xmax=(49.05+Math.sqrt(49.05**2+4*2500*490.5))/(5000),limit=10+xmax;
+$('slide').max=limit.toFixed(6);
+let s=0,time=0,playing=false,rate=1,yaw=-.62,pitch=.36,zoom=1,last=0;
+const along=[co,0,slope],out=[-slope,0,co],side=[0,1,0];
+const add=(a,b)=>a.map((q,i)=>q+b[i]),mul=(a,t)=>a.map(q=>q*t),P=(u,v,w=0)=>add(add(mul(along,u),mul(side,v)),mul(out,w));
+function speed(pos){let x=Math.max(0,pos-10);return Math.sqrt(Math.max(0,2*g*slope*pos-k/m*x*x))}
+function advance(dt){if(!playing)return;let remaining=dt*rate;while(remaining>0){let h=Math.min(.004,remaining);let a=g*slope-(k/m)*Math.max(0,s-10);let v=speed(s);let ds=Math.max(0,v*h+.5*a*h*h);if(s<.00001)ds=Math.max(ds,.5*g*slope*h*h);s=Math.min(limit,s+ds);time+=h;remaining-=h;if(s>=limit-1e-6){s=limit;playing=false;break}}$('slide').value=s;update()}
+function project(p){let x=p[0],y=p[1],z=p[2];let a=x*Math.cos(yaw)-y*Math.sin(yaw),b=x*Math.sin(yaw)+y*Math.cos(yaw);let h=z*Math.cos(pitch)-b*Math.sin(pitch);let depth=z*Math.sin(pitch)+b*Math.cos(pitch);let scale=baseScale*zoom*(1+depth*.007);return [cx+a*scale,cy-h*scale,depth]}
+let W=900,H=600,cx=0,cy=0,baseScale=43;
+function resize(){const r=canvas.getBoundingClientRect();W=r.width;H=r.height;const dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);ctx.setTransform(dpr,0,0,dpr,0,0);cx=W*.52;cy=H*.58;baseScale=Math.min(W/17,H/10.5)}
+function poly(pts,fill,stroke='#58718b',lw=1){const q=pts.map(project);ctx.beginPath();q.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.closePath();ctx.fillStyle=fill;ctx.fill();if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke()}}
+function line(points,color,width=2,dash=[]){const q=points.map(project);ctx.beginPath();q.forEach((p,i)=>i?ctx.lineTo(p[0],p[1]):ctx.moveTo(p[0],p[1]));ctx.strokeStyle=color;ctx.lineWidth=width;ctx.setLineDash(dash);ctx.stroke();ctx.setLineDash([])}
+function text3(str,p,color='#fff',font='bold 13px Segoe UI'){let q=project(p);ctx.fillStyle=color;ctx.font=font;ctx.fillText(str,q[0]+7,q[1]-7)}
+function arrow(a,b,color,label){line([a,b],color,3);let q=project(b),r=project(a),ang=Math.atan2(q[1]-r[1],q[0]-r[0]);ctx.beginPath();ctx.moveTo(...q.slice(0,2));ctx.lineTo(q[0]-12*Math.cos(ang-.45),q[1]-12*Math.sin(ang-.45));ctx.lineTo(q[0]-12*Math.cos(ang+.45),q[1]-12*Math.sin(ang+.45));ctx.closePath();ctx.fillStyle=color;ctx.fill();text3(label,b,color)}
+function box(center,length=.85,width=.86,height=.8){let c=center,L=length/2,B=width/2,h=height;let v=(a,b,z)=>add(c,P(a,b,z));let a=v(-L,-B,0),b=v(L,-B,0),d=v(-L,B,0),e=v(L,B,0),A=v(-L,-B,h),B1=v(L,-B,h),D=v(-L,B,h),E=v(L,B,h);poly([a,b,B1,A],'#9fabb9','#d4e6f7');poly([b,e,E,B1],'#6e839b','#d4e6f7');poly([d,e,E,D],'#61758e','#d4e6f7');poly([A,B1,E,D],'#d9e3ec','#fff');text3('A',v(0,0,h+.1),'#0b2e4c','bold 17px Segoe UI')}
+function draw(){ctx.clearRect(0,0,W,H);
+ // world geometry: descending from initial at u=10 to spring at u=0; ramp extends to u=11.7
+ if($('grid').checked){for(let u=-1;u<=12;u+=1){line([P(u,-2,-.23),P(u,2,-.23)],'#263f55',1)}for(let v=-2;v<=2;v+=.5)line([P(-1,v,-.23),P(12,v,-.23)],'#263f55',1)}
+ // rail side thickness
+ poly([P(-.65,-.9,-.20),P(11.9,-.9,-.20),P(11.9,-.9,0),P(-.65,-.9,0)],'#536575');
+ poly([P(-.65,-.9,0),P(11.9,-.9,0),P(11.9,.9,0),P(-.65,.9,0)],'#8496a9','#d0dce8');
+ poly([P(-.65,.9,-.2),P(11.9,.9,-.2),P(11.9,.9,0),P(-.65,.9,0)],'#44576d');
+ for(let u=0;u<=11;u+=1)line([P(u,-.88,.013),P(u,.88,.013)],'#a8b9ca',1);
+ // support base
+ poly([[-2,-1.7,-1.9],[2.5,-1.7,-1.9],[2.5,1.7,-1.9],[-2,1.7,-1.9]],'#263849','#52657b');
+ line([P(-.35,-.62,-.1),[-.2,-.62,-1.9]],'#b1bfce',5);
+ line([P(-.35,.62,-.1),[-.2,.62,-1.9]],'#b1bfce',5);
+ // spring support at low end
+ poly([P(-.48,-.8,-.08),P(-.48,.8,-.08),P(-.48,.8,1.1),P(-.48,-.8,1.1)],'#4a5d72','#b9c7d4',2);
+ // spring along ramp axis from fixed anchor to contact face at u=0. spring uncompressed 0.9m; actual shortening x
+ let x=Math.max(0,s-10), springLen=.88-x;
+ let helix=[];let n=150;for(let i=0;i<=n;i++){let t=i/n,ang=t*11*Math.PI*2;helix.push(P(-.42+springLen*t,.22*Math.cos(ang),.53+.22*Math.sin(ang)))}line(helix,'#ffbb62',4);
+ line([P(-.42,0,.53),P(-.42+springLen,0,.53)],'#8b6647',1);
+ // block contact surface: block lower face at u= .46-x, block center u= .46-x+.425; initial center u=10+.46+.425
+ let centerU=10+.88-s; // front face u=centerU-.425 => contact u=.455-x
+ // adjust spring end u=-.42+.88-x = .46-x
+ let center=P(centerU,0,.035);
+ box(center);
+ if($('grid').checked){line([P(.46,-1.15,0),P(10.46,-1.15,0)],'#7dd5ff',2,[6,5]);text3('10 m hasta el resorte',P(5.1,-1.22,.1),'#8bd9ff');text3('30°',P(-.5,1.25,-.1),'#ffdb87');text3('k = 5 kN/m',P(.1,1.3,.85),'#ffbb62')}
+ if($('vectors').checked){let c=add(center,P(0,0,.5));arrow(c,add(c,[0,0,-1.55]),'#ff6e79','Peso mg');arrow(c,add(c,mul(out,1.35)),'#66e0ff','Normal N');if(x>0)arrow(c,add(c,mul(along,Math.min(1.6,.35+3*x))),'#ffba63','F resorte');}
+ text3('INICIO',P(11.05,-.4,.95),'#d1e8ff');text3('RESORTE',P(-.4,-1.1,1.2),'#ffc27c');
+}
+function update(){let x=Math.max(0,s-10),v=speed(s),ke=.5*m*v*v,pe=.5*k*x*x,total=490.5+49.05*xmax;
+$('s').textContent=s.toFixed(2)+' m';$('v').textContent=v.toFixed(2)+' m/s';$('x').textContent=(x*1000).toFixed(0)+' mm';$('t').textContent=time.toFixed(2)+' s';$('f').textContent=(k*x).toFixed(0)+' N';$('slideLabel').textContent=s.toFixed(3)+' m';$('keText').textContent=ke.toFixed(1)+' J';$('peText').textContent=pe.toFixed(1)+' J';$('ke').style.width=Math.min(100,ke/total*100)+'%';$('pe').style.width=Math.min(100,pe/total*100)+'%';
+$('status').textContent=s>=limit-1e-5?'Compresión máxima: el bloque se detiene momentáneamente (v = 0).':s<10?'Descenso libre de fricción: la gravedad acelera el bloque hacia el resorte.':'Contacto: el resorte se comprime y frena el bloque.';
+draw()}
+$('play').onclick=()=>{if(s>=limit-1e-5){s=0;time=0}playing=true};
+$('pause').onclick=()=>playing=false;
+$('reset').onclick=()=>{playing=false;s=0;time=0;$('slide').value=0;update()};
+$('contact').onclick=()=>{playing=false;s=10;$('slide').value=s;time=Math.sqrt(2*10/(g*slope));update()};
+$('max').onclick=()=>{playing=false;s=limit;$('slide').value=s;update()};
+$('slide').oninput=e=>{playing=false;s=+e.target.value;update()};
+$('rate').oninput=e=>{rate=+e.target.value;$('rateLabel').textContent=rate.toFixed(2)+'×'};
+$('vectors').onchange=draw;$('grid').onchange=draw;
+let dragging=false,lastX=0,lastY=0;
+canvas.addEventListener('pointerdown',e=>{dragging=true;lastX=e.clientX;lastY=e.clientY;canvas.setPointerCapture(e.pointerId)});
+canvas.addEventListener('pointermove',e=>{if(!dragging)return;yaw+=(e.clientX-lastX)*.007;pitch=Math.max(-.2,Math.min(1.1,pitch+(e.clientY-lastY)*.005));lastX=e.clientX;lastY=e.clientY;draw()});
+canvas.addEventListener('pointerup',()=>dragging=false);
+canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.4,Math.min(2.3,zoom*(e.deltaY>0?.91:1.09)));draw()},{passive:false});
+window.addEventListener('resize',()=>{resize();draw()});
+resize();update();requestAnimationFrame(function frame(t){if(last)advance(Math.min(.05,(t-last)/1000));last=t;requestAnimationFrame(frame)});
+</script></body></html>
