@@ -1,0 +1,68 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Problema 22-28 | Péndulo físico</title><style>
+*{box-sizing:border-box}body{margin:0;background:#081522;color:#eaf4ff;font:14px Segoe UI,Arial,sans-serif}header{padding:18px 24px;background:#12283b;border-bottom:1px solid #34516b}h1{margin:0;font-size:22px}header p{margin:7px 0 0;color:#b5d0e4}.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px}.scene{min-height:620px;position:relative;background:radial-gradient(ellipse at 55% 40%,#284159,#091725 75%)}canvas{display:block;width:100%;height:100%}.tag{position:absolute;left:16px;top:16px;background:#0a2032d9;border:1px solid #466a86;padding:10px;border-radius:9px;font-size:12px}.panel{padding:20px;background:#11263a;border-left:1px solid #35516c}h2{font-size:15px;color:#8bd7ff;margin:20px 0 10px}h2:first-child{margin-top:0}.buttons{display:grid;grid-template-columns:1fr 1fr;gap:8px}button{background:#244b6a;border:1px solid #5085a7;color:white;border-radius:8px;padding:11px;cursor:pointer;font-weight:600}.primary{background:#087bb9}label{display:block;margin-top:14px;color:#bdd5e8;font-size:13px}input[type=range]{width:100%;accent-color:#33c5ff}.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:15px}.metric{padding:12px;border-radius:9px;background:#1c3951;border:1px solid #365c77}.metric small{display:block;font-size:11px;color:#b0cadf;margin-bottom:6px}.metric strong{font-size:19px}.status{padding:12px;background:#1a3b50;border-left:3px solid #4cd1ff;border-radius:8px;margin-top:15px;line-height:1.5}.note{color:#b2cce0;line-height:1.65;font-size:12px;margin-top:18px}code{color:#a3e5ff}@media(max-width:900px){.layout{grid-template-columns:1fr}.scene{height:520px;min-height:0}}</style></head><body>
+<header><h1>PROBLEMA 22-28 · Vibración de un cuerpo irregular</h1><p>Péndulo físico · Método de energía · Oscilaciones pequeñas alrededor de O</p></header>
+<div class="layout"><section class="scene"><canvas id="scene"></canvas><div class="tag">Cuerpo rígido irregular · Apoyo fijo O · Centro de masa G</div></section><aside class="panel">
+<h2>Controles de movimiento</h2><div class="buttons"><button id="play" class="primary">▶ Iniciar</button><button id="pause">Ⅱ Pausar</button><button id="reset">↺ Reiniciar</button><button id="zero">⏭ Equilibrio</button></div>
+<label>Ángulo inicial θ₀: <b id="angleText">10°</b></label><input id="angle" type="range" min="1" max="15" step="1" value="10">
+<label>Distancia O–G, d: <b id="dText">1.00 m</b></label><input id="d" type="range" min=".3" max="2.5" step=".05" value="1">
+<label>Radio de giro kG: <b id="kText">0.60 m</b></label><input id="k" type="range" min=".2" max="1.5" step=".05" value=".6">
+<label>Masa m: <b id="massText">10 kg</b></label><input id="mass" type="range" min="1" max="40" step="1" value="10">
+<label>Velocidad de reproducción: <b id="rateText">1.0×</b></label><input id="rate" type="range" min=".25" max="2" step=".25" value="1">
+<label><input type="checkbox" id="forces" checked> Mostrar peso y reacción en O</label><label><input type="checkbox" id="refs" checked> Mostrar ángulo, distancia d y datum</label>
+<h2>Magnitudes instantáneas</h2><div class="grid"><div class="metric"><small>Tiempo</small><strong id="time">0.00 s</strong></div><div class="metric"><small>Ángulo θ</small><strong id="theta">10.00°</strong></div><div class="metric"><small>Velocidad angular</small><strong id="omega">0.00 rad/s</strong></div><div class="metric"><small>Período natural</small><strong id="period">2.34 s</strong></div><div class="metric"><small>Frecuencia angular</small><strong id="freq">2.69 rad/s</strong></div><div class="metric"><small>Peso mg</small><strong id="weight">98.1 N</strong></div></div>
+<div class="status" id="status">El cuerpo está separado 10° de la vertical y listo para soltarse.</div>
+<h2>Modelo matemático</h2><div class="note">Energía mecánica exacta:<br><code>E = ½m(kG²+d²)θ̇² + mgd(1−cos θ)</code><br><br>Para ángulos pequeños:<br><code>θ̈ + [gd/(kG²+d²)]θ = 0</code><br><br>Período natural:<br><code>T = 2π√[(kG²+d²)/(gd)]</code><br><br><b>Nota:</b> los valores numéricos son ejemplos ajustables: el ejercicio no proporciona cifras. La animación usa la solución lineal de ángulo pequeño, sin amortiguamiento. La reacción se calcula a partir de la aceleración del centro de masa; la forma del cuerpo es ilustrativa y no determina el kG elegido.</div>
+</aside></div>
+<script>
+const $=id=>document.getElementById(id),c=$('scene'),ctx=c.getContext('2d');
+let time=0,playing=false,rate=1,theta0=10*Math.PI/180,d=1,kg=.6,m=10,last=0,W=900,H=650;
+const g=9.81;
+function w(){return Math.sqrt(g*d/(kg*kg+d*d))}
+function state(){return {a:theta0*Math.cos(w()*time),v:-theta0*w()*Math.sin(w()*time)}}
+function resize(){let r=c.getBoundingClientRect(),dpi=Math.min(devicePixelRatio||1,2);W=r.width;H=r.height;c.width=W*dpi;c.height=H*dpi;ctx.setTransform(dpi,0,0,dpi,0,0);draw()}
+function text(s,x,y,color='#eaf4ff',size=14){ctx.fillStyle=color;ctx.font=`600 ${size}px Segoe UI`;ctx.fillText(s,x,y)}
+function line(x1,y1,x2,y2,color='#d6eaff',width=2,dash=[]){ctx.beginPath();ctx.setLineDash(dash);ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=color;ctx.lineWidth=width;ctx.stroke();ctx.setLineDash([])}
+function arrow(x1,y1,x2,y2,color,label){line(x1,y1,x2,y2,color,3);let a=Math.atan2(y2-y1,x2-x1);ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(x2,y2);ctx.lineTo(x2-11*Math.cos(a-.5),y2-11*Math.sin(a-.5));ctx.lineTo(x2-11*Math.cos(a+.5),y2-11*Math.sin(a+.5));ctx.closePath();ctx.fill();text(label,x2+9,y2-8,color,13)}
+function draw(){ctx.clearRect(0,0,W,H);let OX=W*.5,OY=H*.18,scale=Math.min(W*.32,H*.36)/Math.max(d,1.2),a=state().a;let Gx=OX+d*scale*Math.sin(a),Gy=OY+d*scale*Math.cos(a);
+ // mounting ceiling
+ ctx.fillStyle='#60798d';ctx.fillRect(OX-65,OY-32,130,10);
+ for(let j=-50;j<60;j+=13)line(OX+j,OY-32,OX+j+12,OY-44,'#7993a7',1);
+ // datum & vertical
+ if($('refs').checked){line(OX,OY,OX,OY+H*.67,'#a6d0e5',1,[7,6]);let dy=OY+d*scale;line(OX-W*.28,dy,OX+W*.32,dy,'#577f9c',1,[8,5]);text('Datum (G en equilibrio)',OX+W*.13,dy-10,'#95bcd7',12)}
+ // shape irregular in local body coordinates: pivot at (0,0), G at (0,d), silhouette centered around G
+ ctx.save();ctx.translate(OX,OY);ctx.rotate(-a);
+ let z=scale*d;
+ ctx.beginPath();ctx.moveTo(-12,9);
+ ctx.bezierCurveTo(-.49*z,-.05*z,-.63*z,.42*z,-.39*z,.78*z);
+ ctx.bezierCurveTo(-.49*z,1.17*z,-.35*z,1.58*z,-.08*z,1.49*z);
+ ctx.bezierCurveTo(.20*z,1.80*z,.65*z,1.49*z,.56*z,1.15*z);
+ ctx.bezierCurveTo(.78*z,.93*z,.38*z,.75*z,.38*z,.49*z);
+ ctx.bezierCurveTo(.42*z,.17*z,.18*z,-.08*z,-12,9);
+ ctx.closePath();ctx.fillStyle='#9eabb9';ctx.fill();ctx.strokeStyle='#d6e1ec';ctx.lineWidth=3;ctx.stroke();
+ // subtle lobes
+ ctx.beginPath();ctx.ellipse(-.16*z,.74*z,.25*z,.52*z,-.2,0,Math.PI*2);ctx.fillStyle='#ffffff13';ctx.fill();
+ ctx.restore();
+ // pivot
+ ctx.beginPath();ctx.arc(OX,OY,12,0,Math.PI*2);ctx.fillStyle='#253e55';ctx.fill();ctx.strokeStyle='#d7e9f6';ctx.lineWidth=4;ctx.stroke();ctx.beginPath();ctx.arc(OX,OY,4,0,Math.PI*2);ctx.fillStyle='#fff';ctx.fill();text('O',OX-28,OY-9);
+ // mass and center
+ line(OX,OY,Gx,Gy,'#263a4b',2);ctx.beginPath();ctx.arc(Gx,Gy,5,0,Math.PI*2);ctx.fillStyle='#13273a';ctx.fill();text('G',Gx+9,Gy+5,'#0d263c',17);
+ if($('refs').checked){text('d', (OX+Gx)/2+15,(OY+Gy)/2-5,'#b3edff',18);let radius=48;ctx.beginPath();ctx.arc(OX,OY,radius,Math.PI/2-a,Math.PI/2,a>=0);ctx.strokeStyle='#ffc16e';ctx.lineWidth=3;ctx.stroke();text('θ',OX+20,OY+64,'#ffd08c',18)}
+ if($('forces').checked){
+ // Reacción del apoyo obtenida de sumatoria de fuerzas: R + W = m a_G.
+ // Coordenadas de pantalla: y positivo hacia abajo. Modelo lineal para theta(t).
+ let z=state(),alpha=-w()*w()*a;
+ let ax=d*(alpha*Math.cos(a)-z.v*z.v*Math.sin(a));
+ let ay=d*(-alpha*Math.sin(a)-z.v*z.v*Math.cos(a));
+ let Rx=m*ax, Ry=m*ay-m*g;
+ arrow(Gx,Gy,Gx,Gy+Math.min(120,60+m*1.2),'#ffb46c','W = mg');
+ let norm=Math.hypot(Rx,Ry)||1,fac=Math.min(115,Math.max(52,norm*0.8))/norm;
+ arrow(OX,OY,OX+Rx*fac,OY+Ry*fac,'#79ddff','R en O');
+ }
+ text('Oscilación angular alrededor de O · esquema ilustrativo',20,H-24,'#b1d4e8',13)
+}
+function update(){let z=state();$('time').textContent=time.toFixed(2)+' s';$('theta').textContent=(z.a*180/Math.PI).toFixed(2)+'°';$('omega').textContent=z.v.toFixed(2)+' rad/s';$('period').textContent=(2*Math.PI/w()).toFixed(3)+' s';$('freq').textContent=w().toFixed(3)+' rad/s';$('weight').textContent=(m*g).toFixed(1)+' N';$('status').textContent=playing?'El cuerpo oscila alrededor de O. La gravedad genera un momento restaurador.':'Movimiento en pausa. La oscilación es periódica y no tiene amortiguamiento.';draw()}
+$('play').onclick=()=>playing=true;$('pause').onclick=()=>{playing=false;update()};$('reset').onclick=()=>{playing=false;time=0;update()};$('zero').onclick=()=>{playing=false;time=Math.PI/(2*w());update()};
+for(let [id,key,txtid,fmt] of [['angle','angle','angleText',v=>v+'°'],['d','d','dText',v=>(+v).toFixed(2)+' m'],['k','k','kText',v=>(+v).toFixed(2)+' m'],['mass','mass','massText',v=>v+' kg'],['rate','rate','rateText',v=>(+v).toFixed(2)+'×']]){$(id).oninput=e=>{let v=+e.target.value;if(key==='angle')theta0=v*Math.PI/180;if(key==='d')d=v;if(key==='k')kg=v;if(key==='mass')m=v;if(key==='rate')rate=v;$(txtid).textContent=fmt(v);time=0;update()}}
+$('forces').onchange=draw;$('refs').onchange=draw;
+window.addEventListener('resize',resize);function frame(t){if(last&&playing){time+=(t-last)/1000*rate;update()}last=t;requestAnimationFrame(frame)}resize();update();requestAnimationFrame(frame);
+</script></body></html>
